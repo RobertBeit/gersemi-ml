@@ -192,4 +192,59 @@ const enqueuePredict = async (request, response) => {
   return response.status(202).json(job);
 };
 
-module.exports = { enqueuePredict };
+/**
+ * GET /api/predict/stock-data?symbol=...&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&includeIntraday=true|false
+ *
+ * Frontend calls ML backend only. ML backend owns calls to data backend.
+ */
+const getStockDataForAnalysis = async (request, response) => {
+  const {
+    symbol,
+    startDate,
+    endDate,
+    includeIntraday = "true",
+  } = request.query || {};
+
+  if (!symbol || !startDate || !endDate) {
+    return response.status(400).json({
+      error: "symbol, startDate, and endDate are required",
+    });
+  }
+
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!datePattern.test(startDate) || !datePattern.test(endDate)) {
+    return response.status(400).json({
+      error: "startDate and endDate must be in YYYY-MM-DD format",
+    });
+  }
+
+  if (new Date(startDate) > new Date(endDate)) {
+    return response.status(400).json({
+      error: "startDate must be before or equal to endDate",
+    });
+  }
+
+  try {
+    const stockFetch = await fetchStockDataWithIntraday(symbol, startDate, endDate, {
+      includeIntraday: String(includeIntraday).toLowerCase() !== "false",
+    });
+
+    return response.status(200).json({
+      symbol: String(symbol).toUpperCase(),
+      startDate,
+      endDate,
+      data: Array.isArray(stockFetch?.data) ? stockFetch.data : [],
+      intradayMerge: {
+        didMerge: Boolean(stockFetch?.didMerge),
+        reason: stockFetch?.reason || null,
+        intradaySnapshot: stockFetch?.intradaySnapshot || null,
+      },
+    });
+  } catch (error) {
+    return response.status(502).json({
+      error: `Failed to fetch stock data: ${error.message}`,
+    });
+  }
+};
+
+module.exports = { enqueuePredict, getStockDataForAnalysis };

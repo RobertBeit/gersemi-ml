@@ -1,8 +1,19 @@
 const axios = require("axios");
 const https = require("https");
 
-const DATA_BACKEND_URL =
-  process.env.STOCK_DATA_BACKEND_URL || "https://localhost:3003";
+const resolveDataBackendUrl = () => {
+  const candidates = [
+    process.env.STOCK_DATA_BACKEND_URL,
+    process.env.DATA_BACKEND_URL,
+    process.env.STOCK_BACKEND_DATA_URL,
+  ];
+
+  const configured = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return configured ? configured.trim() : "https://localhost:3003";
+};
+
+const DATA_BACKEND_URL = resolveDataBackendUrl();
+console.info(`[stockDataClient] Using data backend base URL: ${DATA_BACKEND_URL}`);
 
 const trimTrailingSlash = (value) => value.replace(/\/+$/, "");
 
