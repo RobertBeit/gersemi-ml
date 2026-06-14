@@ -189,7 +189,11 @@ const enqueuePredict = async (request, response) => {
     },
   });
 
-  return response.status(202).json(job);
+  return response.status(202).json({
+    ...job,
+    stockData,
+    intradayMerge: intradayMergeInfo,
+  });
 };
 
 /**
